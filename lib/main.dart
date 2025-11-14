@@ -19,8 +19,8 @@ const String MANGO_LASSI_URL = "https://picsum.photos/id/257/300";
 const String RESTAURANT_EMAIL = 'reservations@desigrillz.com'; 
 
 // --- STRIPE CONFIGURATION ---
-// IMPORTANT: Replace this with your actual Stripe Publishable Key (pk_test_...)
-const String STRIPE_PUBLISHABLE_KEY = 'pk_test_51O7Q1HGD7kU8gCqXjC3x3h9Q5pB4K6o2r4z4I6t7R9vY0m7sWf2x0w9pE4jN3y2F5q0V3k4d6b0a8C2e9H1fA0L7'; 
+// FIX: Using the real Publishable Key provided by the user.
+const String STRIPE_PUBLISHABLE_KEY = 'pk_test_51SNYEW3UngT9uUArcsWOMklUfH1Wuwo6Vv4XAIltdP5ngYlu753vd92C0Z3L9AN4FDHcMf8vCK5si40ejTbHyNCD003KpbBB0j'; 
 
 // --- 1. THEME AND STYLES ---
 
@@ -73,13 +73,10 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   
   // FIX: Wrap Stripe initialization in a try-catch block.
-  // This prevents the app from crashing due to environmental issues with the Stripe library 
-  // (a common cause of white screens). The app will run even if payment setup fails.
   try {
     Stripe.publishableKey = STRIPE_PUBLISHABLE_KEY;
     Stripe.merchantIdentifier = 'merchant.com.desigrillz'; // Required for Apple Pay
     Stripe.urlScheme = 'flutterstripe'; // Required for 3D Secure redirects
-    // NOTE: In a real app, this should be set only if the platform supports it.
     print("Stripe initialization attempted successfully.");
   } catch (e) {
     // Log the error but allow the app to run
@@ -481,7 +478,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// 5.1 Home Screen (ASSET FIX APPLIED HERE)
+// 5.1 Home Screen
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -498,7 +495,7 @@ class HomePage extends StatelessWidget {
             background: Stack(
               fit: StackFit.expand,
               children: [
-                // 1. Restaurant Ambiance Image: Reverted to Image.asset with correct path casing
+                // 1. Restaurant Ambiance Image: Using Image.asset
                 Image.asset(
                   RESTAURANT_ASSET_PATH,
                   fit: BoxFit.cover,
@@ -520,7 +517,7 @@ class HomePage extends StatelessWidget {
                     ),
                   ),
                 ),
-                // 3. Circular Logo in the center (Reverted to Image.asset with correct path)
+                // 3. Circular Logo in the center
                 Center(
                   child: Container(
                     width: 130, 
@@ -615,7 +612,7 @@ class MenuScreen extends StatelessWidget {
   }
 }
 
-// 5.3 Cart Screen (Updated to navigate to CheckoutScreen)
+// 5.3 Cart Screen
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
 
@@ -699,9 +696,8 @@ class CartScreen extends StatelessWidget {
 
 // Widget for displaying and managing individual cart items
 class CartItemTile extends StatelessWidget {
-  // FIX APPLIED IN PREVIOUS TURN: Declared CartItem as a class member
   final CartItem cartItem;
-  const CartItemTile({super.key, required this.cartItem}); // Now refers to the class field
+  const CartItemTile({super.key, required this.cartItem});
 
   @override
   Widget build(BuildContext context) {
@@ -801,9 +797,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     try {
       // 1. Backend Simulation: Create a Payment Intent
       // --------------------------------------------------------------------------------
-      // WARNING: These are MOCK values. This payment flow WILL FAIL at runtime 
-      // because you must replace these with real secrets returned from your 
-      // secure backend server after creating a PaymentIntent.
+      // IMPORTANT: These are MOCK values. A real application MUST replace these 
+      // with real secrets returned from your secure backend server after creating 
+      // a PaymentIntent, Ephemeral Key, and Customer ID. The app will fail here
+      // until you connect it to a functional backend API.
       final String clientSecret = 'client_secret_mock_test_token_'; // REPLACE WITH REAL VALUE FROM BACKEND
       final String ephemeralKey = 'ek_mock_test_token';             // REPLACE WITH REAL VALUE FROM BACKEND
       final String customerId = 'cus_mock_test_id';                  // REPLACE WITH REAL VALUE FROM BACKEND
@@ -823,7 +820,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             address: Address(
               country: 'US',
               line1: '123 Test St',
-              // FIX APPLIED IN PREVIOUS TURN: Added required parameter line2, set to null
               line2: null, 
               city: 'Test City',
               postalCode: '10001',
