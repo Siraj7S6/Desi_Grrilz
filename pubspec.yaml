@@ -1,0 +1,32 @@
+name: desi_grillz_app
+description: A professional business app for Desi Grillz restaurant.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # For icons and a polished look
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Add assets section to include the logo
+  assets:
+    - assets/logo.png
+  
+  # Define custom fonts (using Inter for a clean, modern look)
+  # Note: You need to download and add the font files (.ttf) to an 'fonts' folder, 
+  # but for simplicity, we will rely on system default or fallback unless specified.
+  # I'll rely on the default system font for this example, which usually looks great.
