@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
 
 // --- NETWORK IMAGE URLS ---
-// Using stable placeholder URLs for restaurant and food images
-// NOTE: RESTAURANT_LOGO_URL is now LOCAL: 'assets/logo.png'
-const String RESTAURANT_AMBIANCE_URL = "https://images.unsplash.com/photo-1517248135460-4c125d0337f7?fit=crop&w=1080&q=80"; // The main restaurant ambiance image
-const String RESERVATION_AMBIANCE_URL = "https://images.unsplash.com/photo-1551632759-e93540a5a679?fit=crop&w=1080&q=80"; // Updated for better stability
+const String RESERVATION_AMBIANCE_URL = "https://images.unsplash.com/photo-1551632759-e93540a5a679?fit=crop&w=1080&q=80"; 
 
 // --- CONTACT INFORMATION ---
-const String RESTAURANT_EMAIL = 'reservations@desigrillz.com'; // New Email Address
+const String RESTAURANT_EMAIL = 'reservations@desigrillz.com'; 
 
 // --- UPDATED FOOD DISH URLS FOR MAXIMUM STABILITY (Using simple picsum.photos links) ---
-const String MUTTON_SEEKH_KEBAB_URL = "https://picsum.photos/id/292/300"; // Ultra-stable placeholder
-const String CHICKEN_BOTI_URL = "https://picsum.photos/id/351/300";   // Ultra-stable placeholder
-const String PANEER_TIKKA_URL = "https://picsum.photos/id/1080/300";  // Ultra-stable placeholder
-const String BUTTER_NAAN_URL = "https://picsum.photos/id/21/300";     // Ultra-stable placeholder
-const String BIRYANI_URL = "https://picsum.photos/id/164/300";      // Ultra-stable placeholder
-const String MANGO_LASSI_URL = "https://picsum.photos/id/257/300";    // Ultra-stable placeholder
+const String MUTTON_SEEKH_KEBAB_URL = "https://picsum.photos/id/292/300"; 
+const String CHICKEN_BOTI_URL = "https://picsum.photos/id/351/300";   
+const String PANEER_TIKKA_URL = "https://picsum.photos/id/1080/300";  
+const String BUTTER_NAAN_URL = "https://picsum.photos/id/21/300";     
+const String BIRYANI_URL = "https://picsum.photos/id/164/300";      
+const String MANGO_LASSI_URL = "https://picsum.photos/id/257/300";    
 
 // --- 1. THEME AND STYLES ---
 
@@ -357,13 +354,12 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  // Updated to include ContactScreen and shift ReservationScreen
   static const List<Widget> _pages = <Widget>[
     HomePage(),        // Index 0
     MenuScreen(),      // Index 1
     CartScreen(),      // Index 2
-    ContactScreen(),   // Index 3 (NEW)
-    ReservationScreen(), // Index 4 (Shifted)
+    ContactScreen(),   // Index 3
+    ReservationScreen(), // Index 4
   ];
 
   void _onItemTapped(int index) {
@@ -455,7 +451,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// 5.1 Home Screen (Cleaned up, no 'Find Us' section)
+// 5.1 Home Screen
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -464,7 +460,7 @@ class HomePage extends StatelessWidget {
     return CustomScrollView(
       slivers: <Widget>[
         SliverAppBar(
-          expandedHeight: 300.0, // Increased height for better visual impact
+          expandedHeight: 300.0, 
           pinned: true,
           flexibleSpace: FlexibleSpaceBar(
             centerTitle: true,
@@ -472,28 +468,14 @@ class HomePage extends StatelessWidget {
             background: Stack(
               fit: StackFit.expand,
               children: [
-                // 1. Network Image for the restaurant ambiance (Primary visual element)
-                Image.network(
-                  RESTAURANT_AMBIANCE_URL,
+                // 1. Asset Image for the restaurant ambiance
+                Image.asset(
+                  'assets/restaurent.jpg',
                   fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      color: AppColors.surfaceDark,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryBronze),
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                              : null,
-                        ),
-                      ),
-                    );
-                  },
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       color: AppColors.surfaceDark,
-                      child: Center(child: Text("Desi Grillz Ambiance Loading Failed", style: AppStyles.bodyStyle)),
+                      child: Center(child: Text("Asset Image Not Found: assets/restaurent.jpg", style: AppStyles.bodyStyle)),
                     );
                   },
                 ),
@@ -511,7 +493,7 @@ class HomePage extends StatelessWidget {
                 // 3. Circular Logo in the center (Image.asset)
                 Center(
                   child: Container(
-                    width: 130, // Slightly larger logo
+                    width: 130, 
                     height: 130,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -553,15 +535,6 @@ class HomePage extends StatelessWidget {
                       style: AppStyles.bodyStyle,
                     ),
                     SizedBox(height: 32),
-                    // Call to Action
-                    Center(
-                      child: CallToActionButton(label: 'View Menu', targetIndex: 1),
-                    ),
-                    SizedBox(height: 16),
-                    // Second Call to Action for Contact (New)
-                    Center(
-                      child: CallToActionButton(label: 'Contact & Location', targetIndex: 3),
-                    ),
                   ],
                 ),
               ),
@@ -612,7 +585,7 @@ class MenuScreen extends StatelessWidget {
   }
 }
 
-// 5.3 Cart Screen
+// 5.3 Cart Screen (Updated to navigate to CheckoutScreen)
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
 
@@ -675,14 +648,9 @@ class CartScreen extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          // Mock checkout process
-                          CartManager.cartItems.value = [];
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Order Placed Successfully!'),
-                              duration: Duration(seconds: 2),
-                              backgroundColor: Colors.green,
-                            ),
+                          // NAVIGATE TO NEW CHECKOUT SCREEN
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (context) => const CheckoutScreen()),
                           );
                         },
                         child: const Text('Proceed to Checkout'),
@@ -763,7 +731,219 @@ class CartItemTile extends StatelessWidget {
   }
 }
 
-// 5.4 NEW Contact Screen
+// Payment Method Enum
+enum PaymentMethod { pay, cod }
+
+// 5.4 NEW Checkout Screen
+class CheckoutScreen extends StatefulWidget {
+  const CheckoutScreen({super.key});
+
+  @override
+  State<CheckoutScreen> createState() => _CheckoutScreenState();
+}
+
+class _CheckoutScreenState extends State<CheckoutScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  
+  PaymentMethod? _paymentMethod; // Null initially, forcing selection
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    super.dispose();
+  }
+
+  void _placeOrder() {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_paymentMethod == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please select a payment method.'),
+          backgroundColor: Colors.red.withOpacity(0.8),
+        ),
+      );
+      return;
+    }
+
+    final total = CartManager.cartTotal;
+    final paymentText = _paymentMethod == PaymentMethod.cod ? 'Cash on Delivery' : 'Online Payment';
+
+    // 1. Clear Cart
+    CartManager.cartItems.value = [];
+
+    // 2. Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Order placed successfully! Total: \$${total.toStringAsFixed(2)}. Payment via: $paymentText'),
+        duration: const Duration(seconds: 4),
+        backgroundColor: Colors.green,
+      ),
+    );
+
+    // 3. Navigate back to cart screen
+    Navigator.of(context).pop();
+  }
+
+  Widget _buildPaymentButton({
+    required PaymentMethod method,
+    required String label,
+    required IconData icon,
+  }) {
+    final isSelected = _paymentMethod == method;
+    return Expanded(
+      child: OutlinedButton.icon(
+        icon: Icon(icon, color: isSelected ? AppColors.backgroundDark : AppColors.primaryBronze),
+        label: Text(label),
+        onPressed: () {
+          setState(() {
+            _paymentMethod = method;
+          });
+        },
+        style: OutlinedButton.styleFrom(
+          backgroundColor: isSelected ? AppColors.primaryBronze : AppColors.surfaceDark,
+          foregroundColor: isSelected ? AppColors.backgroundDark : AppColors.primaryBronze,
+          side: BorderSide(color: AppColors.primaryBronze, width: isSelected ? 2 : 1),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Checkout Details'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text('Delivery Information', style: AppStyles.sectionHeaderStyle),
+              const SizedBox(height: 16),
+
+              // Name Field
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  prefixIcon: Icon(Icons.person, color: AppColors.primaryBronze),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your name.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Phone Field
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  prefixIcon: Icon(Icons.phone, color: AppColors.primaryBronze),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty || value.length < 10) {
+                    return 'Please enter a valid phone number.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Address Field
+              TextFormField(
+                controller: _addressController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Delivery Address',
+                  prefixIcon: Icon(Icons.location_on, color: AppColors.primaryBronze),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your delivery address.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 32),
+
+              // Order Summary (Sticky)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceDark,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.primaryBronze),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Order Total:', style: AppStyles.itemTitleStyle),
+                    Text('\$${CartManager.cartTotal.toStringAsFixed(2)}', style: AppStyles.itemPriceStyle.copyWith(fontSize: 20)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              const Text('Payment Method', style: AppStyles.sectionHeaderStyle),
+              const SizedBox(height: 16),
+
+              // Payment Buttons
+              Row(
+                children: [
+                  _buildPaymentButton(
+                    method: PaymentMethod.pay,
+                    label: 'Pay Now',
+                    icon: Icons.payment,
+                  ),
+                  const SizedBox(width: 16),
+                  _buildPaymentButton(
+                    method: PaymentMethod.cod,
+                    label: 'Cash on Delivery',
+                    icon: Icons.money,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+
+              // Place Order Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.shopping_bag),
+                  onPressed: _placeOrder,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                  ),
+                  label: const Text('PLACE ORDER', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// 5.5 Contact Screen
 class ContactScreen extends StatelessWidget {
   const ContactScreen({super.key});
 
@@ -807,7 +987,7 @@ class ContactScreen extends StatelessWidget {
   }
 }
 
-// 5.5 Reservation Screen (Shifted to index 4)
+// 5.6 Reservation Screen
 class ReservationScreen extends StatefulWidget {
   const ReservationScreen({super.key});
 
@@ -1001,8 +1181,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     return 'Please enter a valid number of guests';
                   }
                   return null;
-                },
-              ),
+                  }
+                ),
               const SizedBox(height: 16),
               Row(
                 children: [
