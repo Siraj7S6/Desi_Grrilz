@@ -362,6 +362,8 @@ class CallToActionButton extends StatelessWidget {
         final parentState = context.findAncestorStateOfType<_MainScreenState>();
         if (parentState != null) {
           parentState._onItemTapped(targetIndex);
+          // If called from the body (like CartScreen), we might need to close the drawer if it's open.
+          // Since this is generic, we rely on the main screen to handle its state.
         }
       },
       child: Text(label),
@@ -369,7 +371,7 @@ class CallToActionButton extends StatelessWidget {
   }
 }
 
-// --- 5. SCREENS ---
+// --- 5. SCREENS (Refactored to remove Scaffold/AppBar) ---
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -381,6 +383,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
+  // The pages now only return the body content, as the main screen manages the Scaffold/AppBar/Navigation.
   static const List<Widget> _pages = <Widget>[
     HomePage(),        // Index 0
     MenuScreen(),      // Index 1
@@ -388,6 +391,16 @@ class _MainScreenState extends State<MainScreen> {
     ContactScreen(),   // Index 3
     ReservationScreen(), // Index 4
   ];
+  
+  // NEW: Navigation Items Data Structure
+  final List<Map<String, dynamic>> _navItems = [
+    {'label': 'Home', 'icon': Icons.home},
+    {'label': 'Menu', 'icon': Icons.menu_book},
+    {'label': 'Cart', 'icon': Icons.shopping_cart},
+    {'label': 'Contact', 'icon': Icons.info},
+    {'label': 'Reserve', 'icon': Icons.table_chart},
+  ];
+
 
   void _onItemTapped(int index) {
     setState(() {
@@ -395,90 +408,187 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
   
-  List<BottomNavigationBarItem> _buildBottomNavigationBarItems() {
-    return [
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.home),
-        label: 'Home',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.menu_book),
-        label: 'Menu',
-      ),
-      // Cart Tab with live count badge
-      BottomNavigationBarItem(
-        label: 'Cart',
-        icon: ValueListenableBuilder<List<CartItem>>(
-          valueListenable: CartManager.cartItems,
-          builder: (context, cartItems, child) {
-            final count = CartManager.totalItemCount;
+  // Custom Cart Icon with Badge (must be accessible here)
+  Widget _buildCartIconWithBadge({bool isDrawer = false}) {
+    return ValueListenableBuilder<List<CartItem>>(
+      valueListenable: CartManager.cartItems,
+      builder: (context, cartItems, child) {
+        final count = CartManager.totalItemCount;
+        
+        // Icon color logic for Drawer/Navigation Rail
+        final color = isDrawer 
+            ? (_selectedIndex == 2 ? AppColors.backgroundDark : AppColors.primaryBronze)
+            : AppColors.primaryBronze;
             
-            return Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.shopping_cart),
-                if (count > 0)
-                  Positioned(
-                    right: -8,
-                    top: -4,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.surfaceDark, width: 1.5),
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: Text(
-                        count > 9 ? '9+' : '$count',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(Icons.shopping_cart, color: color),
+            if (count > 0)
+              Positioned(
+                right: -8,
+                top: -4,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.surfaceDark, width: 1.5),
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  child: Text(
+                    count > 9 ? '9+' : '$count',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
                     ),
-                  )
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+          ],
+        );
+      },
+    );
+  }
+  
+  // Drawer widget for mobile
+  Widget _buildDrawer() {
+    return Drawer(
+      backgroundColor: AppColors.surfaceDark,
+      child: Column(
+        children: <Widget>[
+          // Drawer Header
+          DrawerHeader(
+            decoration: const BoxDecoration(color: AppColors.backgroundDark),
+            child: Row(
+              children: [
+                // Logo placeholder
+                Image.asset(
+                  LOGO_ASSET_PATH, 
+                  height: 60, 
+                  width: 60, 
+                  fit: BoxFit.contain, 
+                  errorBuilder: (context, error, stack) => const Icon(Icons.star, size: 40, color: AppColors.primaryBronze)
+                ),
+                const SizedBox(width: 12),
+                const Text('Desi Grillz', style: AppStyles.titleStyle),
               ],
+            ),
+          ),
+          // Navigation List Tiles
+          ..._navItems.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            final isSelected = index == _selectedIndex;
+            
+            Widget iconWidget = item['icon'] == Icons.shopping_cart 
+                ? _buildCartIconWithBadge(isDrawer: true) // Pass isDrawer=true for specific icon coloring
+                : Icon(item['icon'], color: isSelected ? AppColors.backgroundDark : AppColors.primaryBronze);
+
+            return ListTile(
+              leading: iconWidget,
+              title: Text(item['label'] as String, style: AppStyles.itemTitleStyle.copyWith(color: isSelected ? AppColors.backgroundDark : AppColors.textLight)),
+              selected: isSelected,
+              selectedColor: AppColors.backgroundDark,
+              selectedTileColor: AppColors.primaryBronze,
+              onTap: () {
+                _onItemTapped(index);
+                Navigator.pop(context); // Close the drawer
+              },
             );
-          },
-        ),
+          }).toList(),
+          const Spacer(),
+          // Footer
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text(
+              'Authentic Indian & Pakistani Grillz',
+              style: AppStyles.bodyStyle,
+              textAlign: TextAlign.center,
+            ),
+          )
+        ],
       ),
-      // NEW Contact Tab
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.info),
-        label: 'Contact',
-      ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.table_chart),
-        label: 'Reserve',
-      ),
-    ];
+    );
   }
 
 
+  // Refactored MainScreen build method to use LayoutBuilder for responsiveness
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        items: _buildBottomNavigationBarItems(),
-        currentIndex: _selectedIndex,
-        selectedItemColor: AppColors.primaryBronze,
-        unselectedItemColor: AppColors.textMuted,
-        backgroundColor: AppColors.surfaceDark,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed, // Essential for 5 items
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double width = constraints.maxWidth;
+        // Check for mobile/tablet size vs desktop size
+        const bool isMobile = true; // width < 600; 
+        
+        // This is a simplified check. Using true forces the AppBar/Drawer for a cleaner mobile-first experience.
+        // For web, a width of 600 is usually the breakpoint for a tablet layout.
+        final bool isDesktop = width >= 800;
+
+
+        // Desktop/Web View (Navigation Rail)
+        if (isDesktop) {
+          return Scaffold(
+            appBar: AppBar(
+              // Title on the main app bar
+              title: Text(_navItems[_selectedIndex]['label'] as String),
+              // Optional: Add a subtle logo to the AppBar on desktop
+              leading: Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: Image.asset(LOGO_ASSET_PATH, height: 40, width: 40, errorBuilder: (context, error, stack) => const Icon(Icons.star, color: AppColors.primaryBronze)),
+              ),
+            ),
+            body: Row(
+              children: <Widget>[
+                // Permanent Navigation Rail for Wide Screens
+                NavigationRail(
+                  backgroundColor: AppColors.surfaceDark,
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: (index) => _onItemTapped(index),
+                  labelType: NavigationRailLabelType.all,
+                  selectedIconTheme: const IconThemeData(color: AppColors.primaryBronze),
+                  unselectedIconTheme: const IconThemeData(color: AppColors.textMuted),
+                  selectedLabelTextStyle: AppStyles.bodyStyle.copyWith(color: AppColors.primaryBronze, fontWeight: FontWeight.bold),
+                  unselectedLabelTextStyle: AppStyles.bodyStyle.copyWith(color: AppColors.textMuted),
+                  destinations: _navItems.map((item) {
+                    return NavigationRailDestination(
+                      icon: item['icon'] == Icons.shopping_cart 
+                          ? _buildCartIconWithBadge()
+                          : Icon(item['icon']),
+                      selectedIcon: Icon(item['icon']),
+                      label: Text(item['label'] as String),
+                    );
+                  }).toList(),
+                ),
+                const VerticalDivider(thickness: 1, width: 1, color: AppColors.surfaceDark),
+                // Page Content
+                Expanded(child: _pages[_selectedIndex]),
+              ],
+            ),
+          );
+        }
+
+        // Mobile/Tablet View (AppBar + Drawer)
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(_navItems[_selectedIndex]['label'] as String),
+            // The leading hamburger icon is automatically displayed when the drawer is present.
+          ),
+          drawer: _buildDrawer(), // Hamburger icon appears automatically
+          body: _pages[_selectedIndex],
+        );
+      },
     );
   }
 }
 
-// 5.1 Home Screen
+// 5.1 Home Screen (SliverAppBar allows a custom header, works well under main Scaffold)
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -489,6 +599,7 @@ class HomePage extends StatelessWidget {
         SliverAppBar(
           expandedHeight: 300.0, 
           pinned: true,
+          backgroundColor: AppColors.backgroundDark, // Ensure it matches the main app bar background
           flexibleSpace: FlexibleSpaceBar(
             centerTitle: true,
             title: const Text('Desi Grillz', style: TextStyle(color: AppColors.accentLight, shadows: [Shadow(color: AppColors.backgroundDark, blurRadius: 4)])),
@@ -562,6 +673,15 @@ class HomePage extends StatelessWidget {
                       style: AppStyles.bodyStyle,
                     ),
                     SizedBox(height: 32),
+                    // Call to action buttons for easy navigation on Home page
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Expanded(child: CallToActionButton(label: 'View Menu', targetIndex: 1)),
+                        SizedBox(width: 16),
+                        Expanded(child: CallToActionButton(label: 'Reserve Table', targetIndex: 4)),
+                      ],
+                    )
                   ],
                 ),
               ),
@@ -573,7 +693,7 @@ class HomePage extends StatelessWidget {
   }
 }
 
-// 5.2 Menu Screen
+// 5.2 Menu Screen (Removed Scaffold/AppBar)
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
 
@@ -600,96 +720,87 @@ class MenuScreen extends StatelessWidget {
       }
     });
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Our Menu'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(24.0),
-        children: menuWidgets,
-      ),
+    // Return only the body content
+    return ListView(
+      padding: const EdgeInsets.all(24.0),
+      children: menuWidgets,
     );
   }
 }
 
-// 5.3 Cart Screen
+// 5.3 Cart Screen (Removed Scaffold/AppBar)
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Your Order'),
-      ),
-      body: ValueListenableBuilder<List<CartItem>>(
-        valueListenable: CartManager.cartItems,
-        builder: (context, cartItems, child) {
-          if (cartItems.isEmpty) {
-            return Center(
+    return ValueListenableBuilder<List<CartItem>>(
+      valueListenable: CartManager.cartItems,
+      builder: (context, cartItems, child) {
+        if (cartItems.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.shopping_cart_outlined, size: 80, color: AppColors.textMuted),
+                const SizedBox(height: 16),
+                Text('Your cart is empty', style: AppStyles.sectionHeaderStyle.copyWith(color: AppColors.textMuted)),
+                const SizedBox(height: 8),
+                const Text('Start adding delicious grillz from the menu!', style: AppStyles.bodyStyle),
+                const SizedBox(height: 24),
+                CallToActionButton(label: 'Browse Menu', targetIndex: 1),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: cartItems.length,
+                itemBuilder: (context, index) {
+                  final cartItem = cartItems[index];
+                  return CartItemTile(cartItem: cartItem);
+                },
+              ),
+            ),
+            // Total and Checkout Area
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceDark,
+                border: Border(top: BorderSide(color: AppColors.primaryBronze)),
+              ),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.shopping_cart_outlined, size: 80, color: AppColors.textMuted),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Subtotal', style: AppStyles.itemTitleStyle),
+                      Text('\$${CartManager.cartTotal.toStringAsFixed(2)}', style: AppStyles.itemTitleStyle.copyWith(color: AppColors.primaryBronze)),
+                    ],
+                  ),
                   const SizedBox(height: 16),
-                  Text('Your cart is empty', style: AppStyles.sectionHeaderStyle.copyWith(color: AppColors.textMuted)),
-                  const SizedBox(height: 8),
-                  const Text('Start adding delicious grillz from the menu!', style: AppStyles.bodyStyle),
-                  const SizedBox(height: 24),
-                  CallToActionButton(label: 'Browse Menu', targetIndex: 1),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // NAVIGATE TO NEW CHECKOUT SCREEN
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+                        );
+                      },
+                      child: const Text('Proceed to Checkout'),
+                    ),
+                  ),
                 ],
               ),
-            );
-          }
-
-          return Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: cartItems.length,
-                  itemBuilder: (context, index) {
-                    final cartItem = cartItems[index];
-                    return CartItemTile(cartItem: cartItem);
-                  },
-                ),
-              ),
-              // Total and Checkout Area
-              Container(
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceDark,
-                  border: Border(top: BorderSide(color: AppColors.primaryBronze)),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Subtotal', style: AppStyles.itemTitleStyle),
-                        Text('\$${CartManager.cartTotal.toStringAsFixed(2)}', style: AppStyles.itemTitleStyle.copyWith(color: AppColors.primaryBronze)),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          // NAVIGATE TO NEW CHECKOUT SCREEN
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (context) => const CheckoutScreen()),
-                          );
-                        },
-                        child: const Text('Proceed to Checkout'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -761,7 +872,7 @@ class CartItemTile extends StatelessWidget {
 // Payment Method Enum
 enum PaymentMethod { pay, cod }
 
-// 5.4 NEW Checkout Screen
+// 5.4 NEW Checkout Screen (Keeps Scaffold/AppBar as it's a separate route)
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
 
@@ -1079,51 +1190,46 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 }
 
-// 5.5 Contact Screen
+// 5.5 Contact Screen (Removed Scaffold/AppBar)
 class ContactScreen extends StatelessWidget {
   const ContactScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Contact Us'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text('Get in Touch', style: AppStyles.titleStyle),
-            const SizedBox(height: 16),
-            const Text(
-              'We are here to answer any questions you may have about our menu, services, or large group bookings. Reach out to us via phone, email, or stop by our location during business hours.',
-              style: AppStyles.bodyStyle,
-            ),
-            const SizedBox(height: 32),
-            const Text('Our Details', style: AppStyles.sectionHeaderStyle),
-            const SizedBox(height: 16),
-            // Contact Information
-            const ContactInfoTile(icon: Icons.phone, text: '+1 (555) 123-4567'),
-            const ContactInfoTile(icon: Icons.email, text: RESTAURANT_EMAIL),
-            const ContactInfoTile(icon: Icons.location_on, text: '123 Grill Street, Flavor City'),
-            const SizedBox(height: 32),
-            const Text('Hours of Operation', style: AppStyles.sectionHeaderStyle),
-            const SizedBox(height: 16),
-            const ContactInfoTile(icon: Icons.access_time, text: 'Mon - Sun: 5:00 PM - 11:00 PM'),
-            const SizedBox(height: 48),
-            // Call to action to reserve a table (Target Index 4)
-            Center(
-              child: CallToActionButton(label: 'Book a Table Now', targetIndex: 4), 
-            ),
-          ],
-        ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text('Get in Touch', style: AppStyles.titleStyle),
+          const SizedBox(height: 16),
+          const Text(
+            'We are here to answer any questions you may have about our menu, services, or large group bookings. Reach out to us via phone, email, or stop by our location during business hours.',
+            style: AppStyles.bodyStyle,
+          ),
+          const SizedBox(height: 32),
+          const Text('Our Details', style: AppStyles.sectionHeaderStyle),
+          const SizedBox(height: 16),
+          // Contact Information
+          const ContactInfoTile(icon: Icons.phone, text: '+1 (555) 123-4567'),
+          const ContactInfoTile(icon: Icons.email, text: RESTAURANT_EMAIL),
+          const ContactInfoTile(icon: Icons.location_on, text: '123 Grill Street, Flavor City'),
+          const SizedBox(height: 32),
+          const Text('Hours of Operation', style: AppStyles.sectionHeaderStyle),
+          const SizedBox(height: 16),
+          const ContactInfoTile(icon: Icons.access_time, text: 'Mon - Sun: 5:00 PM - 11:00 PM'),
+          const SizedBox(height: 48),
+          // Call to action to reserve a table (Target Index 4)
+          Center(
+            child: CallToActionButton(label: 'Book a Table Now', targetIndex: 4), 
+          ),
+        ],
       ),
     );
   }
 }
 
-// 5.6 Reservation Screen
+// 5.6 Reservation Screen (Removed Scaffold/AppBar)
 class ReservationScreen extends StatefulWidget {
   const ReservationScreen({super.key});
 
@@ -1225,152 +1331,147 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Book a Table'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              // Reservation Ambiance Image
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  RESERVATION_AMBIANCE_URL,
-                  height: 180,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      height: 180,
-                      color: AppColors.surfaceDark,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryBronze),
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                              : null,
-                        ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            // Reservation Ambiance Image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(
+                RESERVATION_AMBIANCE_URL,
+                height: 180,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    height: 180,
+                    color: AppColors.surfaceDark,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryBronze),
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                            : null,
                       ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 180,
-                      color: AppColors.surfaceDark,
-                      child: const Center(child: Text("Reserved Table View", style: AppStyles.bodyStyle)),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Make a Reservation',
-                style: AppStyles.sectionHeaderStyle,
-              ),
-              const SizedBox(height: 16),
-              if (_reservationSuccess)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.green),
-                      SizedBox(width: 10),
-                      Text('Reservation Confirmed! We look forward to seeing you.', style: AppStyles.bodyStyle),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Full Name',
-                  prefixIcon: Icon(Icons.person, color: AppColors.primaryBronze),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 180,
+                    color: AppColors.surfaceDark,
+                    child: const Center(child: Text("Reserved Table View", style: AppStyles.bodyStyle)),
+                  );
                 },
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _guestsController,
-                decoration: const InputDecoration(
-                  labelText: 'Number of Guests',
-                  prefixIcon: Icon(Icons.group, color: AppColors.primaryBronze),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Make a Reservation',
+              style: AppStyles.sectionHeaderStyle,
+            ),
+            const SizedBox(height: 16),
+            if (_reservationSuccess)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green),
                 ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || int.tryParse(value) == null || int.parse(value) <= 0) {
-                    return 'Please enter a valid number of guests';
-                  }
-                  return null;
-                  }
-                ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _dateController,
-                      readOnly: true,
-                      onTap: () => _selectDate(context),
-                      decoration: const InputDecoration(
-                        labelText: 'Date',
-                        prefixIcon: Icon(Icons.calendar_today, color: AppColors.primaryBronze),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Select a date';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _timeController,
-                      readOnly: true,
-                      onTap: () => _selectTime(context),
-                      decoration: const InputDecoration(
-                        labelText: 'Time',
-                        prefixIcon: Icon(Icons.schedule, color: AppColors.primaryBronze),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Select a time';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-              Center(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _submitReservation,
-                    child: const Text('Confirm Reservation'),
-                  ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green),
+                    SizedBox(width: 10),
+                    Text('Reservation Confirmed! We look forward to seeing you.', style: AppStyles.bodyStyle),
+                  ],
                 ),
               ),
-            ],
-          ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Full Name',
+                prefixIcon: Icon(Icons.person, color: AppColors.primaryBronze),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your name';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _guestsController,
+              decoration: const InputDecoration(
+                labelText: 'Number of Guests',
+                prefixIcon: Icon(Icons.group, color: AppColors.primaryBronze),
+              ),
+              keyboardType: TextInputType.number,
+              validator: (value) {
+                if (value == null || int.tryParse(value) == null || int.parse(value) <= 0) {
+                  return 'Please enter a valid number of guests';
+                }
+                return null;
+                }
+              ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _dateController,
+                    readOnly: true,
+                    onTap: () => _selectDate(context),
+                    decoration: const InputDecoration(
+                      labelText: 'Date',
+                      prefixIcon: Icon(Icons.calendar_today, color: AppColors.primaryBronze),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Select a date';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextFormField(
+                    controller: _timeController,
+                    readOnly: true,
+                    onTap: () => _selectTime(context),
+                    decoration: const InputDecoration(
+                      labelText: 'Time',
+                      prefixIcon: Icon(Icons.schedule, color: AppColors.primaryBronze),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Select a time';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            Center(
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _submitReservation,
+                  child: const Text('Confirm Reservation'),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
