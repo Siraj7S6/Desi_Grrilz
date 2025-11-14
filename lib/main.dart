@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
+// FIX: Added 'hide Card' to prevent name conflict with the Flutter Material Card widget.
+import 'package:flutter_stripe/flutter_stripe.dart' hide Card; 
 
-// --- NETWORK IMAGE URLS ---
+// --- ASSET PATHS (Using exact casing from pubspec.yaml) ---
+const String RESTAURANT_ASSET_PATH = 'assets/restaurent.JPG';
+const String LOGO_ASSET_PATH = 'assets/logo.png';
+
+// --- NETWORK IMAGE URLS FOR MENU ITEMS (to maintain stability) ---
 const String RESERVATION_AMBIANCE_URL = "https://images.unsplash.com/photo-1551632759-e93540a5a679?fit=crop&w=1080&q=80"; 
-
-// --- CONTACT INFORMATION ---
-const String RESTAURANT_EMAIL = 'reservations@desigrillz.com'; 
-
-// --- UPDATED FOOD DISH URLS FOR MAXIMUM STABILITY (Using simple picsum.photos links) ---
 const String MUTTON_SEEKH_KEBAB_URL = "https://picsum.photos/id/292/300"; 
 const String CHICKEN_BOTI_URL = "https://picsum.photos/id/351/300";   
 const String PANEER_TIKKA_URL = "https://picsum.photos/id/1080/300";  
 const String BUTTER_NAAN_URL = "https://picsum.photos/id/21/300";     
 const String BIRYANI_URL = "https://picsum.photos/id/164/300";      
 const String MANGO_LASSI_URL = "https://picsum.photos/id/257/300";    
+
+// --- CONTACT INFORMATION ---
+const String RESTAURANT_EMAIL = 'reservations@desigrillz.com'; 
+
+// --- STRIPE CONFIGURATION ---
+// IMPORTANT: Replace this with your actual Stripe Publishable Key (pk_test_...)
+const String STRIPE_PUBLISHABLE_KEY = 'pk_test_51O7Q1HGD7kU8gCqXjC3x3h9Q5pB4K6o2r4z4I6t7R9vY0m7sWf2x0w9pE4jN3y2F5q0V3k4d6b0a8C2e9H1fA0L7'; 
 
 // --- 1. THEME AND STYLES ---
 
@@ -58,9 +66,26 @@ class AppStyles {
   );
 }
 
-// --- 2. MAIN APPLICATION SETUP ---
+// --- 2. MAIN APPLICATION SETUP (FIX APPLIED HERE) ---
 
 void main() {
+  // Ensure Flutter binding is initialized first
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // FIX: Wrap Stripe initialization in a try-catch block.
+  // This prevents the app from crashing due to environmental issues with the Stripe library 
+  // (a common cause of white screens). The app will run even if payment setup fails.
+  try {
+    Stripe.publishableKey = STRIPE_PUBLISHABLE_KEY;
+    Stripe.merchantIdentifier = 'merchant.com.desigrillz'; // Required for Apple Pay
+    Stripe.urlScheme = 'flutterstripe'; // Required for 3D Secure redirects
+    // NOTE: In a real app, this should be set only if the platform supports it.
+    print("Stripe initialization attempted successfully.");
+  } catch (e) {
+    // Log the error but allow the app to run
+    print("WARNING: Stripe initialization failed. Payment functionality may be disabled. Error: $e");
+  }
+  
   runApp(const DesiGrillzApp());
 }
 
@@ -178,6 +203,11 @@ class CartManager {
   
   static int get totalItemCount {
     return cartItems.value.fold(0, (total, current) => total + current.quantity);
+  }
+  
+  static void clearCart() {
+    cartItems.value = [];
+    cartItems.notifyListeners();
   }
 }
 
@@ -451,7 +481,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// 5.1 Home Screen
+// 5.1 Home Screen (ASSET FIX APPLIED HERE)
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -468,14 +498,14 @@ class HomePage extends StatelessWidget {
             background: Stack(
               fit: StackFit.expand,
               children: [
-                // 1. Asset Image for the restaurant ambiance
+                // 1. Restaurant Ambiance Image: Reverted to Image.asset with correct path casing
                 Image.asset(
-                  'assets/restaurent.jpg',
+                  RESTAURANT_ASSET_PATH,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       color: AppColors.surfaceDark,
-                      child: Center(child: Text("Asset Image Not Found: assets/restaurent.jpg", style: AppStyles.bodyStyle)),
+                      child: Center(child: Text("Restaurant Ambiance (Asset not found)", style: AppStyles.bodyStyle)),
                     );
                   },
                 ),
@@ -490,7 +520,7 @@ class HomePage extends StatelessWidget {
                     ),
                   ),
                 ),
-                // 3. Circular Logo in the center (Image.asset)
+                // 3. Circular Logo in the center (Reverted to Image.asset with correct path)
                 Center(
                   child: Container(
                     width: 130, 
@@ -508,7 +538,7 @@ class HomePage extends StatelessWidget {
                     ),
                     child: ClipOval(
                       child: Image.asset(
-                        'assets/logo.png',
+                        LOGO_ASSET_PATH, 
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => 
                            const Icon(Icons.star, size: 80, color: AppColors.primaryBronze),
@@ -669,8 +699,9 @@ class CartScreen extends StatelessWidget {
 
 // Widget for displaying and managing individual cart items
 class CartItemTile extends StatelessWidget {
+  // FIX APPLIED IN PREVIOUS TURN: Declared CartItem as a class member
   final CartItem cartItem;
-  const CartItemTile({super.key, required this.cartItem});
+  const CartItemTile({super.key, required this.cartItem}); // Now refers to the class field
 
   @override
   Widget build(BuildContext context) {
@@ -748,7 +779,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   
-  PaymentMethod? _paymentMethod; // Null initially, forcing selection
+  PaymentMethod? _paymentMethod = PaymentMethod.pay; // Default to Pay Now for easier testing
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -757,8 +789,98 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _addressController.dispose();
     super.dispose();
   }
+  
+  // --- STRIPE PAYMENT FUNCTION ---
+  Future<void> _handleStripePayment(double amount) async {
+    if (amount <= 0) return;
 
-  void _placeOrder() {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // 1. Backend Simulation: Create a Payment Intent
+      // --------------------------------------------------------------------------------
+      // WARNING: These are MOCK values. This payment flow WILL FAIL at runtime 
+      // because you must replace these with real secrets returned from your 
+      // secure backend server after creating a PaymentIntent.
+      final String clientSecret = 'client_secret_mock_test_token_'; // REPLACE WITH REAL VALUE FROM BACKEND
+      final String ephemeralKey = 'ek_mock_test_token';             // REPLACE WITH REAL VALUE FROM BACKEND
+      final String customerId = 'cus_mock_test_id';                  // REPLACE WITH REAL VALUE FROM BACKEND
+      // --------------------------------------------------------------------------------
+
+      // 2. Initialize Payment Sheet
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'Desi Grillz',
+          customerId: customerId,
+          customerEphemeralKeySecret: ephemeralKey,
+          style: ThemeMode.dark,
+          // Optional: Force card payment method for simplicity
+          billingDetails: const BillingDetails(
+            email: RESTAURANT_EMAIL,
+            address: Address(
+              country: 'US',
+              line1: '123 Test St',
+              // FIX APPLIED IN PREVIOUS TURN: Added required parameter line2, set to null
+              line2: null, 
+              city: 'Test City',
+              postalCode: '10001',
+              state: 'NY',
+            ),
+          ),
+        ),
+      );
+
+      // 3. Display Payment Sheet and await confirmation
+      await Stripe.instance.presentPaymentSheet();
+      
+      // If successful (no exception thrown), we proceed to finalize order
+      _finalizeOrder('Online Payment (Stripe)');
+
+    } on Exception catch (e) {
+      String message = 'Payment failed. Please try again.';
+      if (e is StripeException) {
+        // This is where you will likely see an error due to the mock secrets
+        message = 'Stripe Error: ${e.error.localizedMessage}. Check clientSecret and Ephemeral Key.';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if(mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Finalizes the order, common to both COD and successful Stripe payment
+  void _finalizeOrder(String paymentText) {
+     final total = CartManager.cartTotal;
+     
+     // 1. Clear Cart
+     CartManager.clearCart(); 
+
+     // 2. Show success message
+     ScaffoldMessenger.of(context).showSnackBar(
+       SnackBar(
+         content: Text('Order placed successfully! Total: \$${total.toStringAsFixed(2)}. Payment via: $paymentText'),
+         duration: const Duration(seconds: 4),
+         backgroundColor: Colors.green,
+       ),
+     );
+
+     // 3. Navigate back to cart screen
+     Navigator.of(context).pop();
+  }
+
+  void _placeOrder() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -772,24 +894,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       );
       return;
     }
+    
+    // Check if loading to prevent double-tap
+    if (_isLoading) return;
 
-    final total = CartManager.cartTotal;
-    final paymentText = _paymentMethod == PaymentMethod.cod ? 'Cash on Delivery' : 'Online Payment';
-
-    // 1. Clear Cart
-    CartManager.cartItems.value = [];
-
-    // 2. Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Order placed successfully! Total: \$${total.toStringAsFixed(2)}. Payment via: $paymentText'),
-        duration: const Duration(seconds: 4),
-        backgroundColor: Colors.green,
-      ),
-    );
-
-    // 3. Navigate back to cart screen
-    Navigator.of(context).pop();
+    if (_paymentMethod == PaymentMethod.cod) {
+      _finalizeOrder('Cash on Delivery');
+    } else if (_paymentMethod == PaymentMethod.pay) {
+      final amount = CartManager.cartTotal;
+      if (amount > 0) {
+        await _handleStripePayment(amount);
+      } else {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(
+             content: const Text('Cart is empty. Cannot process payment.'),
+             backgroundColor: Colors.red.withOpacity(0.8),
+           ),
+         );
+      }
+    }
   }
 
   Widget _buildPaymentButton({
@@ -910,7 +1033,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 children: [
                   _buildPaymentButton(
                     method: PaymentMethod.pay,
-                    label: 'Pay Now',
+                    label: 'Pay Now (Stripe)',
                     icon: Icons.payment,
                   ),
                   const SizedBox(width: 16),
@@ -927,14 +1050,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.shopping_bag),
-                  onPressed: _placeOrder,
+                  icon: _isLoading 
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: AppColors.backgroundDark, strokeWidth: 2)) 
+                    : const Icon(Icons.shopping_bag),
+                  onPressed: _isLoading ? null : _placeOrder,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 15),
                   ),
-                  label: const Text('PLACE ORDER', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  label: Text(
+                    _isLoading 
+                      ? 'PROCESSING PAYMENT...' 
+                      : 'PLACE ORDER', 
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+                  ),
                 ),
               ),
+              
+              const SizedBox(height: 20),
+              
+              // PCI Compliance Warning
+              const Text(
+                'Note: "Pay Now" uses Stripe’s secure payment sheet to handle card details. A real implementation requires a secure backend to generate the Client Secret.',
+                style: AppStyles.bodyStyle,
+                textAlign: TextAlign.center,
+              )
+              
             ],
           ),
         ),

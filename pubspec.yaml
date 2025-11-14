@@ -13,7 +13,10 @@ dependencies:
   
   # For icons and a polished look
   cupertino_icons: ^1.0.6
-
+  
+  # DEPENDENCY ADDED FOR STRIPE INTEGRATION
+  flutter_stripe: ^9.0.0 # Using a common recent version
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -25,7 +28,8 @@ flutter:
   # Add assets section to include the logo
   assets:
     - assets/logo.png
-  
+    - assets/restaurent.JPG
+    
   # Define custom fonts (using Inter for a clean, modern look)
   # Note: You need to download and add the font files (.ttf) to an 'fonts' folder, 
   # but for simplicity, we will rely on system default or fallback unless specified.
