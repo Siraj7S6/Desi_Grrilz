@@ -103,7 +103,6 @@ class DesiGrillzApp extends StatelessWidget {
           primary: AppColors.primaryBronze,
           onPrimary: AppColors.backgroundDark,
           secondary: AppColors.accentLight,
-          background: AppColors.backgroundDark,
           surface: AppColors.surfaceDark,
         ),
         appBarTheme: const AppBarTheme(
@@ -362,8 +361,10 @@ class CallToActionButton extends StatelessWidget {
         final parentState = context.findAncestorStateOfType<_MainScreenState>();
         if (parentState != null) {
           parentState._onItemTapped(targetIndex);
-          // If called from the body (like CartScreen), we might need to close the drawer if it's open.
-          // Since this is generic, we rely on the main screen to handle its state.
+          // Close the drawer if the button is pressed from within the drawer on mobile
+          if (Scaffold.of(context).isDrawerOpen) {
+             Navigator.pop(context);
+          }
         }
       },
       child: Text(label),
@@ -501,7 +502,7 @@ class _MainScreenState extends State<MainScreen> {
                 Navigator.pop(context); // Close the drawer
               },
             );
-          }).toList(),
+          }),
           const Spacer(),
           // Footer
           const Padding(
@@ -524,11 +525,8 @@ class _MainScreenState extends State<MainScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final double width = constraints.maxWidth;
-        // Check for mobile/tablet size vs desktop size
-        const bool isMobile = true; // width < 600; 
-        
-        // This is a simplified check. Using true forces the AppBar/Drawer for a cleaner mobile-first experience.
-        // For web, a width of 600 is usually the breakpoint for a tablet layout.
+        // Adjusting the breakpoint for responsiveness
+        // Use 800 for the threshold to switch to permanent NavigationRail
         final bool isDesktop = width >= 800;
 
 
@@ -588,103 +586,108 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// 5.1 Home Screen (SliverAppBar allows a custom header, works well under main Scaffold)
+// 5.1 Home Screen (FIX: Changed from CustomScrollView with SliverAppBar to a standard ListView)
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: <Widget>[
-        SliverAppBar(
-          expandedHeight: 300.0, 
-          pinned: true,
-          backgroundColor: AppColors.backgroundDark, // Ensure it matches the main app bar background
-          flexibleSpace: FlexibleSpaceBar(
-            centerTitle: true,
-            title: const Text('Desi Grillz', style: TextStyle(color: AppColors.accentLight, shadows: [Shadow(color: AppColors.backgroundDark, blurRadius: 4)])),
-            background: Stack(
-              fit: StackFit.expand,
-              children: [
-                // 1. Restaurant Ambiance Image: Using Image.asset
-                Image.asset(
-                  RESTAURANT_ASSET_PATH,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: AppColors.surfaceDark,
-                      child: Center(child: Text("Restaurant Ambiance (Asset not found)", style: AppStyles.bodyStyle)),
-                    );
-                  },
-                ),
-                // 2. Overlay for better text visibility and blending
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [AppColors.backgroundDark.withOpacity(0.9), AppColors.backgroundDark.withOpacity(0.5), Colors.transparent],
-                      stops: const [0.0, 0.4, 0.7],
-                    ),
+    // Media query to determine the height for the header image
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double headerHeight = screenHeight * 0.35; // 35% of screen height for a dominant header
+
+    return ListView(
+      padding: EdgeInsets.zero, // Remove padding to let the header go edge-to-edge
+      children: <Widget>[
+        // --- 1. Header Area ---
+        Container(
+          height: headerHeight,
+          color: AppColors.backgroundDark,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 1. Background Image
+              Image.asset(
+                RESTAURANT_ASSET_PATH,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: AppColors.surfaceDark,
+                    child: const Center(child: Text("Restaurant Ambiance (Asset not found)", style: AppStyles.bodyStyle)),
+                  );
+                },
+              ),
+              // 2. Overlay for better text visibility and blending
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [AppColors.backgroundDark.withOpacity(0.9), AppColors.backgroundDark.withOpacity(0.5), Colors.transparent],
+                    stops: const [0.0, 0.4, 0.7],
                   ),
                 ),
-                // 3. Circular Logo in the center
-                Center(
-                  child: Container(
-                    width: 130, 
-                    height: 130,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primaryBronze.withOpacity(0.3),
-                          blurRadius: 15,
-                          spreadRadius: 3,
+              ),
+              // 3. Circular Logo in the center
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                     Container(
+                      width: 100, // Reduced size for a cleaner look
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primaryBronze.withOpacity(0.3),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                        border: Border.all(color: AppColors.primaryBronze, width: 3),
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          LOGO_ASSET_PATH, 
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => 
+                             const Icon(Icons.star, size: 60, color: AppColors.primaryBronze),
                         ),
-                      ],
-                      border: Border.all(color: AppColors.primaryBronze, width: 4),
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        LOGO_ASSET_PATH, 
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => 
-                           const Icon(Icons.star, size: 80, color: AppColors.primaryBronze),
                       ),
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SliverList(
-          delegate: SliverChildListDelegate(
-            [
-              const Padding(
-                padding: EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text('Welcome to Desi Grillz', style: AppStyles.titleStyle),
-                    SizedBox(height: 16),
-                    Text(
-                      'Experience the true flavor of charcoal-grilled, authentic South Asian cuisine. Our passion is the perfect kebab, marinated in traditional spices and cooked to smoky perfection. From our family to yours, welcome to a culinary journey.',
-                      style: AppStyles.bodyStyle,
-                    ),
-                    SizedBox(height: 32),
-                    // Call to action buttons for easy navigation on Home page
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Expanded(child: CallToActionButton(label: 'View Menu', targetIndex: 1)),
-                        SizedBox(width: 16),
-                        Expanded(child: CallToActionButton(label: 'Reserve Table', targetIndex: 4)),
-                      ],
-                    )
+                    const SizedBox(height: 8),
+                    Text('Desi Grillz', style: AppStyles.titleStyle.copyWith(fontSize: 24, color: AppColors.accentLight, shadows: [Shadow(color: AppColors.backgroundDark, blurRadius: 4)])),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
+            ],
+          ),
+        ),
+        
+        // --- 2. Body Content ---
+        const Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text('Welcome to Desi Grillz', style: AppStyles.titleStyle),
+              SizedBox(height: 16),
+              Text(
+                'Experience the true flavor of charcoal-grilled, authentic South Asian cuisine. Our passion is the perfect kebab, marinated in traditional spices and cooked to smoky perfection. From our family to yours, welcome to a culinary journey.',
+                style: AppStyles.bodyStyle,
+              ),
+              SizedBox(height: 32),
+              // Call to action buttons for easy navigation on Home page
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Expanded(child: CallToActionButton(label: 'View Menu', targetIndex: 1)),
+                  SizedBox(width: 16),
+                  Expanded(child: CallToActionButton(label: 'Reserve Table', targetIndex: 4)),
+                ],
+              )
             ],
           ),
         ),
@@ -692,6 +695,7 @@ class HomePage extends StatelessWidget {
     );
   }
 }
+
 
 // 5.2 Menu Screen (Removed Scaffold/AppBar)
 class MenuScreen extends StatelessWidget {
@@ -742,13 +746,13 @@ class CartScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.shopping_cart_outlined, size: 80, color: AppColors.textMuted),
+                const Icon(Icons.shopping_cart_outlined, size: 80, color: AppColors.textMuted),
                 const SizedBox(height: 16),
                 Text('Your cart is empty', style: AppStyles.sectionHeaderStyle.copyWith(color: AppColors.textMuted)),
                 const SizedBox(height: 8),
                 const Text('Start adding delicious grillz from the menu!', style: AppStyles.bodyStyle),
                 const SizedBox(height: 24),
-                CallToActionButton(label: 'Browse Menu', targetIndex: 1),
+                const CallToActionButton(label: 'Browse Menu', targetIndex: 1),
               ],
             ),
           );
@@ -769,7 +773,7 @@ class CartScreen extends StatelessWidget {
             // Total and Checkout Area
             Container(
               padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.surfaceDark,
                 border: Border(top: BorderSide(color: AppColors.primaryBronze)),
               ),
@@ -912,9 +916,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // with real secrets returned from your secure backend server after creating 
       // a PaymentIntent, Ephemeral Key, and Customer ID. The app will fail here
       // until you connect it to a functional backend API.
-      final String clientSecret = 'client_secret_mock_test_token_'; // REPLACE WITH REAL VALUE FROM BACKEND
-      final String ephemeralKey = 'ek_mock_test_token';             // REPLACE WITH REAL VALUE FROM BACKEND
-      final String customerId = 'cus_mock_test_id';                  // REPLACE WITH REAL VALUE FROM BACKEND
+      const String clientSecret = 'client_secret_mock_test_token_'; // REPLACE WITH REAL VALUE FROM BACKEND
+      const String ephemeralKey = 'ek_mock_test_token';             // REPLACE WITH REAL VALUE FROM BACKEND
+      const String customerId = 'cus_mock_test_id';                  // REPLACE WITH REAL VALUE FROM BACKEND
       // --------------------------------------------------------------------------------
 
       // 2. Initialize Payment Sheet
@@ -1196,29 +1200,29 @@ class ContactScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
+    return const SingleChildScrollView(
+      padding: EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Text('Get in Touch', style: AppStyles.titleStyle),
-          const SizedBox(height: 16),
-          const Text(
+          Text('Get in Touch', style: AppStyles.titleStyle),
+          SizedBox(height: 16),
+          Text(
             'We are here to answer any questions you may have about our menu, services, or large group bookings. Reach out to us via phone, email, or stop by our location during business hours.',
             style: AppStyles.bodyStyle,
           ),
-          const SizedBox(height: 32),
-          const Text('Our Details', style: AppStyles.sectionHeaderStyle),
-          const SizedBox(height: 16),
+          SizedBox(height: 32),
+          Text('Our Details', style: AppStyles.sectionHeaderStyle),
+          SizedBox(height: 16),
           // Contact Information
-          const ContactInfoTile(icon: Icons.phone, text: '+1 (555) 123-4567'),
-          const ContactInfoTile(icon: Icons.email, text: RESTAURANT_EMAIL),
-          const ContactInfoTile(icon: Icons.location_on, text: '123 Grill Street, Flavor City'),
-          const SizedBox(height: 32),
-          const Text('Hours of Operation', style: AppStyles.sectionHeaderStyle),
-          const SizedBox(height: 16),
-          const ContactInfoTile(icon: Icons.access_time, text: 'Mon - Sun: 5:00 PM - 11:00 PM'),
-          const SizedBox(height: 48),
+          ContactInfoTile(icon: Icons.phone, text: '+1 (555) 123-4567'),
+          ContactInfoTile(icon: Icons.email, text: RESTAURANT_EMAIL),
+          ContactInfoTile(icon: Icons.location_on, text: '123 Grill Street, Flavor City'),
+          SizedBox(height: 32),
+          Text('Hours of Operation', style: AppStyles.sectionHeaderStyle),
+          SizedBox(height: 16),
+          ContactInfoTile(icon: Icons.access_time, text: 'Mon - Sun: 5:00 PM - 11:00 PM'),
+          SizedBox(height: 48),
           // Call to action to reserve a table (Target Index 4)
           Center(
             child: CallToActionButton(label: 'Book a Table Now', targetIndex: 4), 
@@ -1260,8 +1264,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
               onPrimary: AppColors.backgroundDark,
               surface: AppColors.surfaceDark,
               onSurface: AppColors.textLight,
-            ),
-            dialogBackgroundColor: AppColors.backgroundDark,
+            ), dialogTheme: DialogThemeData(backgroundColor: AppColors.backgroundDark),
           ),
           child: child!,
         );
@@ -1286,8 +1289,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
               onPrimary: AppColors.backgroundDark,
               surface: AppColors.surfaceDark,
               onSurface: AppColors.textLight,
-            ),
-            dialogBackgroundColor: AppColors.backgroundDark,
+            ), dialogTheme: DialogThemeData(backgroundColor: AppColors.backgroundDark),
           ),
           child: child!,
         );
