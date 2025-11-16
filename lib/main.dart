@@ -657,7 +657,7 @@ class HomePage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text('Desi Grillz', style: AppStyles.titleStyle.copyWith(fontSize: 24, color: AppColors.accentLight, shadows: [Shadow(color: AppColors.backgroundDark, blurRadius: 4)])),
+                    Text('Desi Grillz', style: AppStyles.titleStyle.copyWith(fontSize: 24, color: AppColors.accentLight, shadows: [const Shadow(color: AppColors.backgroundDark, blurRadius: 4)])),
                     const SizedBox(height: 16),
                   ],
                 ),
@@ -923,14 +923,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       // 2. Initialize Payment Sheet
       await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
+        paymentSheetParameters: const SetupPaymentSheetParameters(
           paymentIntentClientSecret: clientSecret,
           merchantDisplayName: 'Desi Grillz',
           customerId: customerId,
           customerEphemeralKeySecret: ephemeralKey,
           style: ThemeMode.dark,
           // Optional: Force card payment method for simplicity
-          billingDetails: const BillingDetails(
+          billingDetails: BillingDetails(
             email: RESTAURANT_EMAIL,
             address: Address(
               country: 'US',
@@ -1264,7 +1264,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
               onPrimary: AppColors.backgroundDark,
               surface: AppColors.surfaceDark,
               onSurface: AppColors.textLight,
-            ), dialogTheme: DialogThemeData(backgroundColor: AppColors.backgroundDark),
+            ), dialogTheme: const DialogThemeData(backgroundColor: AppColors.backgroundDark),
           ),
           child: child!,
         );
@@ -1289,7 +1289,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
               onPrimary: AppColors.backgroundDark,
               surface: AppColors.surfaceDark,
               onSurface: AppColors.textLight,
-            ), dialogTheme: DialogThemeData(backgroundColor: AppColors.backgroundDark),
+            ), dialogTheme: const DialogThemeData(backgroundColor: AppColors.backgroundDark),
           ),
           child: child!,
         );
